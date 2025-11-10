@@ -104,10 +104,18 @@ export function AuthProvider({ children, supabaseClient, toast }: AuthProviderPr
   
   const fetchUserPermissions = useCallback(async (userId: string) => {
     try {
-      // Fetch permissions without retry on initial load
-      const { data, error } = await supabaseClient.functions.invoke('get-user-permissions', {
+      // Add timeout to prevent hanging Edge Function calls
+      const PERMISSIONS_TIMEOUT = 15000 // 15 seconds (increased from 8)
+      
+      const permissionsPromise = supabaseClient.functions.invoke('get-user-permissions', {
         body: { user_id: userId }
       })
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Permissions fetch timeout')), PERMISSIONS_TIMEOUT)
+      )
+      
+      const { data, error } = await Promise.race([permissionsPromise, timeoutPromise]) as any
 
       if (error) throw error
       setPermissions(data?.permissions || [])
@@ -120,15 +128,16 @@ export function AuthProvider({ children, supabaseClient, toast }: AuthProviderPr
   const fetchUserProfile = useCallback(async (authUserId: string) => {
     // Prevent multiple simultaneous fetches
     if (isFetchingRef.current) {
-      console.log('[AuthContext] Fetch already in progress, skipping')
       return
     }
 
     isFetchingRef.current = true
     
     try {
-      // Fetch user profile without retry on initial load to prevent loops
-      const { data, error } = await supabaseClient
+      // Add timeout to prevent hanging queries (especially in Edge browser)
+      const PROFILE_TIMEOUT = 15000 // 15 seconds (increased from 8)
+      
+      const profilePromise = supabaseClient
         .from('users')
         .select(`
           *,
@@ -136,6 +145,12 @@ export function AuthProvider({ children, supabaseClient, toast }: AuthProviderPr
         `)
         .eq('auth_user_id', authUserId)
         .maybeSingle()
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('User profile fetch timeout')), PROFILE_TIMEOUT)
+      )
+      
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any
 
       if (error) throw error
       
@@ -147,7 +162,27 @@ export function AuthProvider({ children, supabaseClient, toast }: AuthProviderPr
       }
     } catch (error) {
       console.error('Error fetching user:', error)
-      toastHandler.error('Failed to load user profile. Please try refreshing.')
+      console.error('User ID:', authUserId)
+      console.error('Timestamp:', new Date().toISOString())
+      
+      if (error instanceof Error && error.message === 'User profile fetch timeout') {
+        toastHandler.warning('Failed to load your profile. Please sign in again.')
+        
+        // Immediately clear local state BEFORE calling signOut to prevent race conditions
+        setSession(null)
+        setAuthUser(null)
+        setUser(null)
+        setPermissions([])
+        setSessionExpiresAt(null)
+        setLoading(false)
+        isFetchingRef.current = false
+        
+        // Then sign out from Supabase (don't await to prevent blocking)
+        supabaseClient.auth.signOut().catch(e => console.error('Error signing out:', e))
+        return // Exit early
+      } else {
+        toastHandler.error('Failed to load user profile. Please try refreshing.')
+      }
     } finally {
       setLoading(false)
       isFetchingRef.current = false
@@ -156,20 +191,35 @@ export function AuthProvider({ children, supabaseClient, toast }: AuthProviderPr
 
   // Initial session setup - runs ONLY once on mount
   useEffect(() => {
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setAuthUser(session?.user ?? null)
-      setSessionExpiresAt(session?.expires_at ? new Date(session.expires_at * 1000) : null)
-      
-      if (session?.user) {
-        fetchUserProfile(session.user.id).finally(() => {
+    // Add timeout to prevent infinite loading (especially in Edge browser)
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setIsInitialized(true)
+    }, 10000) // 10 second timeout
+    
+    supabaseClient.auth.getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(timeoutId) // Clear timeout on success
+        
+        setSession(session)
+        setAuthUser(session?.user ?? null)
+        setSessionExpiresAt(session?.expires_at ? new Date(session.expires_at * 1000) : null)
+        
+        if (session?.user) {
+          fetchUserProfile(session.user.id).finally(() => {
+            setIsInitialized(true)
+          })
+        } else {
+          setLoading(false)
           setIsInitialized(true)
-        })
-      } else {
+        }
+      })
+      .catch((error) => {
+        console.error('Error getting session:', error)
+        clearTimeout(timeoutId)
         setLoading(false)
         setIsInitialized(true)
-      }
-    })
+      })
 
     // Listen to auth state changes
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: AuthChangeEvent, session) => {
@@ -201,7 +251,10 @@ export function AuthProvider({ children, supabaseClient, toast }: AuthProviderPr
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
