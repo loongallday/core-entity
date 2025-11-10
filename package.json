@@ -1,0 +1,53 @@
+{
+  "name": "@core-erp/entity",
+  "version": "1.0.0",
+  "description": "Core entity management, database types, and Supabase utilities for Core ERP applications",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "supabase"
+  ],
+  "scripts": {
+    "build": "tsc && vite build",
+    "dev": "vite build --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.79.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react-swc": "^3.11.0",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.19",
+    "vite-plugin-dts": "^3.7.0"
+  },
+  "keywords": [
+    "entity",
+    "database",
+    "supabase",
+    "core-erp",
+    "rbac",
+    "permissions"
+  ],
+  "author": "Core ERP",
+  "license": "MIT"
+}
+

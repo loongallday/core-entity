@@ -1,0 +1,543 @@
+---
+title: Core Entity Package Rules
+description: Context and guidelines for the @core-erp/entity shared package
+tags: [typescript, supabase, react, entity-management, rbac]
+---
+
+# @core-erp/entity - Project Context & Rules
+
+## 🎯 Project Identity
+
+**@core-erp/entity** is a shared npm package that provides:
+- Core database types and TypeScript definitions
+- Supabase client factory and utilities
+- Authentication and authorization contexts
+- Permission checking utilities
+- React hooks for entity management (users, roles, permissions)
+- Zod validation schemas
+- Database migrations
+- Supabase Edge Functions
+
+## 📊 Current Status
+
+- **Status**: ✅ Production Ready
+- **Version**: 1.0.0
+- **Type**: NPM Package (Private)
+- **Used By**: core-erp, plugin-erp packages
+- **Migration**: ✅ Complete (see MIGRATION_SUMMARY.md)
+
+## 🏗️ Technology Stack
+
+### Core Technologies
+- TypeScript (strict mode)
+- React 18 (peer dependency)
+- Supabase JS Client v2
+- Zod (validation)
+- TanStack React Query v5 (peer dependency)
+
+### Build System
+- Vite (library mode)
+- TypeScript compiler
+- vite-plugin-dts (type generation)
+
+## 🎨 Architecture Principles
+
+### 1. ✅ Configuration Over Convention
+
+**CRITICAL RULE**: This package NEVER reads environment variables directly.
+
+```typescript
+// ❌ WRONG - Never do this in core-entity
+const url = process.env.VITE_SUPABASE_URL
+const key = process.env.VITE_SUPABASE_ANON_KEY
+
+// ✅ CORRECT - Accept configuration from consuming app
+const supabase = createSupabaseClient({
+  url: import.meta.env.VITE_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+})
+```
+
+**Why**: Multiple apps may use this package with different Supabase instances.
+
+### 2. ✅ Provider-Based Architecture
+
+All configuration is passed through React Context providers:
+
+```typescript
+<SupabaseProvider client={supabase}>
+  <AuthProvider supabaseClient={supabase} toast={toast}>
+    <App />
+  </AuthProvider>
+</SupabaseProvider>
+```
+
+### 3. ✅ Zero Side Effects
+
+- No automatic initialization
+- No global state
+- No singleton patterns
+- Everything must be explicitly configured
+
+### 4. ✅ Full TypeScript Support
+
+- 100% TypeScript
+- Strict mode enabled
+- Comprehensive type exports
+- Generated `.d.ts` files
+
+### 5. ✅ Peer Dependencies
+
+React and React Query are peer dependencies to avoid version conflicts:
+
+```json
+{
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+## 📁 Package Structure
+
+```
+core-entity/
+├── src/
+│   ├── index.ts                    # Main exports
+│   ├── types/
+│   │   ├── database.ts             # Database entity types
+│   │   └── config.ts               # Configuration types
+│   ├── lib/
+│   │   ├── supabase.ts             # Client factory
+│   │   ├── permissions.ts          # Permission utilities
+│   │   ├── constants.ts            # Auth/session constants
+│   │   └── authRetry.ts            # Retry logic
+│   ├── schemas/
+│   │   ├── user.ts                 # User validation (Zod)
+│   │   ├── role.ts                 # Role validation
+│   │   ├── permission.ts           # Permission validation
+│   │   ├── audit.ts                # Audit log validation
+│   │   └── index.ts
+│   ├── contexts/
+│   │   ├── AuthContext.tsx         # Auth + permissions context
+│   │   ├── SupabaseContext.tsx     # Supabase client provider
+│   │   └── index.ts
+│   └── hooks/
+│       ├── useAuth.ts              # Access auth context
+│       ├── useUsers.ts             # User CRUD operations
+│       ├── useRoles.ts             # Role management
+│       ├── usePermissions.ts       # Permission queries
+│       ├── useNetworkStatus.ts     # Network monitoring
+│       ├── useSessionManagement.ts # Cross-tab session sync
+│       └── index.ts
+├── supabase/
+│   ├── migrations/                 # Database schema files
+│   │   ├── 20250110000001_create_core_tables.sql
+│   │   ├── 20250110000002_seed_roles_and_permissions.sql
+│   │   ├── 20250110000003_add_user_locale.sql
+│   │   ├── 20250110000004_create_translations_table.sql
+│   │   └── 20250110000005_seed_translations.sql
+│   └── functions/                  # Edge Functions (Deno)
+│       ├── _shared/
+│       │   └── cors.ts
+│       ├── create-user/
+│       ├── update-user/
+│       ├── assign-roles/
+│       ├── get-user-permissions/
+│       └── update-user-locale/
+├── dist/                           # Built package
+├── package.json
+├── tsconfig.json
+├── tsconfig.build.json
+├── vite.config.ts
+├── README.md
+└── MIGRATION_SUMMARY.md
+```
+
+## 🗄️ Database Schema (Core Tables)
+
+### users
+- User profiles (separate from auth.users)
+- Fields: id, auth_user_id, name, email, phone, avatar_url, status, locale
+- RLS enabled
+
+### roles
+- Role definitions with hierarchy
+- Fields: id, code, name, level, is_system
+- Default roles: superadmin (100), admin (50), user (10)
+- RLS enabled
+
+### permissions
+- Granular permission definitions
+- Fields: id, code, name, description, category
+- Format: `resource:action` (e.g., `users:create`)
+- RLS enabled
+
+### user_roles
+- Many-to-many junction: users ↔ roles
+- Fields: user_id, role_id, assigned_by, assigned_at
+- RLS enabled
+
+### role_permissions
+- Many-to-many junction: roles ↔ permissions
+- Fields: role_id, permission_id
+- RLS enabled
+
+### audit_log
+- Action tracking
+- Fields: id, user_id, action, resource, resource_id, changes, ip_address, user_agent, created_at
+- RLS enabled
+
+### translations
+- Localization strings
+- Fields: id, key, locale, value
+- RLS enabled
+
+## 🔐 Security Model
+
+### Permission Resolution Flow
+
+```
+User → user_roles → roles → role_permissions → permissions
+```
+
+A user can have multiple roles. Effective permissions = **union** of all role permissions.
+
+### Permission Format
+
+`resource:action` pattern:
+- `users:view`, `users:create`, `users:edit`, `users:delete`, `users:manage_roles`
+- `roles:view`, `roles:create`, `roles:edit`, `roles:delete`
+- `permissions:view`, `permissions:assign`
+- `system:configure`, `system:audit`
+
+### Permission Checking Utilities
+
+```typescript
+// From useAuth hook
+const { hasPermission, hasAnyPermission, hasAllPermissions } = useAuth()
+
+// Single permission
+if (!hasPermission('users:create')) {
+  return <AccessDenied />
+}
+
+// Any of multiple permissions
+if (!hasAnyPermission(['users:edit', 'users:create'])) {
+  return <AccessDenied />
+}
+
+// All permissions required
+if (!hasAllPermissions(['users:view', 'users:edit'])) {
+  return <AccessDenied />
+}
+```
+
+## 📦 Package Exports
+
+### Main Export
+
+```typescript
+import * from '@core-erp/entity'
+```
+
+### Granular Exports
+
+```typescript
+// Types
+import { User, Role, Permission } from '@core-erp/entity'
+
+// Client factory
+import { createSupabaseClient } from '@core-erp/entity'
+
+// Schemas
+import { userSchema, roleSchema } from '@core-erp/entity'
+
+// Contexts
+import { AuthProvider, SupabaseProvider } from '@core-erp/entity'
+
+// Hooks
+import { useAuth, useUsers, useRoles } from '@core-erp/entity'
+
+// Utilities
+import { hasPermission, checkPermissions } from '@core-erp/entity'
+```
+
+## 🔧 Development Guidelines
+
+### Adding New Entity Types
+
+1. **Add type to `src/types/database.ts`**
+   ```typescript
+   export interface Product {
+     id: string
+     name: string
+     // ...
+   }
+   ```
+
+2. **Create Zod schema in `src/schemas/product.ts`**
+   ```typescript
+   import { z } from 'zod'
+   
+   export const productSchema = z.object({
+     name: z.string().min(1),
+     // ...
+   })
+   ```
+
+3. **Create hook in `src/hooks/useProducts.ts`**
+   ```typescript
+   import { useQuery, useMutation } from '@tanstack/react-query'
+   import { useSupabase } from '../contexts/SupabaseContext'
+   
+   export function useProducts() {
+     const supabase = useSupabase()
+     // Implementation
+   }
+   ```
+
+4. **Export from main index**
+   ```typescript
+   // src/index.ts
+   export * from './hooks/useProducts'
+   export * from './schemas/product'
+   ```
+
+### Adding New Permissions
+
+Permissions should be added via database migration:
+
+```sql
+INSERT INTO permissions (code, name, description, category)
+VALUES 
+  ('products:view', 'View Products', 'Can view product list', 'products'),
+  ('products:create', 'Create Products', 'Can create new products', 'products');
+```
+
+### Adding Edge Functions
+
+1. **Create function directory**
+   ```
+   supabase/functions/my-function/
+   ```
+
+2. **Add index.ts**
+   ```typescript
+   import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+   import { corsHeaders } from '../_shared/cors.ts'
+   
+   serve(async (req) => {
+     // Implementation
+   })
+   ```
+
+3. **Document in docs/**
+
+## 🚀 Build & Publish
+
+### Build Package
+
+```bash
+npm run build
+```
+
+Output:
+- `dist/index.js` - Bundled code
+- `dist/index.d.ts` - Type definitions
+- `dist/**/*.d.ts` - Individual type files
+
+### Publish to NPM Registry
+
+```bash
+# Build first
+npm run build
+
+# Publish to private registry
+npm publish --registry=https://your-private-registry.com
+```
+
+### Version Management
+
+Follow semantic versioning:
+- **Patch** (1.0.1): Bug fixes, no API changes
+- **Minor** (1.1.0): New features, backward compatible
+- **Major** (2.0.0): Breaking changes
+
+## 🧪 Testing Strategy
+
+### Type Checking
+
+```bash
+npm run type-check
+```
+
+### Integration Testing
+
+Test in consuming applications:
+
+```bash
+# In core-erp
+npm install file:../core-entity
+npm run dev
+```
+
+### Manual Testing Checklist
+
+- [ ] Authentication flow works
+- [ ] Permission checking functions correctly
+- [ ] All hooks return correct data
+- [ ] Supabase client is properly configured
+- [ ] Edge Functions can be called
+- [ ] Types are exported correctly
+
+## 📚 Usage in Consuming Apps
+
+### Installation
+
+```bash
+# Local development
+npm install file:../core-entity
+
+# From private registry
+npm install @core-erp/entity
+```
+
+### Setup
+
+```typescript
+// 1. Create Supabase client
+import { createSupabaseClient } from '@core-erp/entity'
+
+export const supabase = createSupabaseClient({
+  url: import.meta.env.VITE_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+})
+
+// 2. Wrap app with providers
+import { SupabaseProvider, AuthProvider } from '@core-erp/entity'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SupabaseProvider client={supabase}>
+        <AuthProvider supabaseClient={supabase} toast={toast}>
+          {/* Your app */}
+        </AuthProvider>
+      </SupabaseProvider>
+    </QueryClientProvider>
+  )
+}
+
+// 3. Use hooks in components
+import { useAuth, useUsers } from '@core-erp/entity'
+
+function MyComponent() {
+  const { user, hasPermission } = useAuth()
+  const { data: users } = useUsers()
+  
+  if (!hasPermission('users:view')) {
+    return <AccessDenied />
+  }
+  
+  // Use users
+}
+```
+
+## ⚠️ Important Rules
+
+### DO ✅
+
+- ✅ Accept all configuration as parameters
+- ✅ Use TypeScript strict mode
+- ✅ Export all public types
+- ✅ Document all public APIs
+- ✅ Use Zod for validation
+- ✅ Keep contexts minimal
+- ✅ Follow semantic versioning
+- ✅ Test in consuming apps before publishing
+
+### DON'T ❌
+
+- ❌ Read environment variables
+- ❌ Create global singletons
+- ❌ Have side effects on import
+- ❌ Bundle React or React Query
+- ❌ Hardcode Supabase URLs
+- ❌ Skip type exports
+- ❌ Break backward compatibility without major version bump
+- ❌ Forget to build before publishing
+
+## 🔄 Update Protocol
+
+### When Adding Features
+
+1. Update source code
+2. Update types if needed
+3. Update documentation
+4. Build package
+5. Test in consuming app
+6. Update version number
+7. Publish
+
+### When Fixing Bugs
+
+1. Fix the issue
+2. Add test case (if applicable)
+3. Build package
+4. Test in consuming app
+5. Bump patch version
+6. Publish
+
+## 📖 Documentation
+
+### Essential Documents
+
+- **README.md** - Package overview and quick start
+- **PROJECT_CONTEXT.md** - Complete architecture guide
+- **DOCUMENTATION.md** - Documentation index
+- **MIGRATION_SUMMARY.md** - Migration details from core-erp
+
+### Cursor Rules
+
+- **.cursor/rules/core-entity-project.mdc** - This file
+- **.cursor/rules/documentation-protocol.mdc** - Documentation standards
+
+### Documentation Directory
+
+- **docs/guides/** - How-to guides
+- **docs/api/** - API reference
+- **docs/architecture/** - Architecture documentation
+
+## 🎯 Success Metrics
+
+### Package Quality
+- ✅ 100% TypeScript
+- ✅ Zero environment variable reads
+- ✅ Full type exports
+- ✅ Peer dependencies only
+- ✅ Tree-shakeable exports
+
+### Developer Experience
+- ✅ Clear API
+- ✅ Good documentation
+- ✅ Type-safe
+- ✅ Easy to test
+- ✅ Flexible configuration
+
+### Integration
+- ✅ Works in multiple apps
+- ✅ No version conflicts
+- ✅ Easy to upgrade
+- ✅ Backward compatible
+
+---
+
+**Last Updated**: 2025-01-10  
+**Maintained By**: Core ERP Team  
+**Review Frequency**: Per major feature or monthly

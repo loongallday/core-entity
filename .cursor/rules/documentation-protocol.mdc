@@ -1,0 +1,502 @@
+---
+title: Core Entity Documentation Protocol
+description: Guidelines for organizing and maintaining package documentation
+---
+
+# @core-erp/entity - Documentation Protocol
+
+## 📁 Documentation Structure
+
+### Root Level Documentation
+Location: Package root `/`
+
+**Primary Documents (Always keep updated):**
+- `README.md` - Package overview, installation, quick start
+- `PROJECT_CONTEXT.md` - Comprehensive architecture guide
+- `DOCUMENTATION.md` - Master documentation index
+- `MIGRATION_SUMMARY.md` - Historical context from core-erp migration
+
+**Purpose:** Main entry points for understanding the package.
+
+---
+
+### Documentation Directory (`/docs/`)
+Location: `/docs/`
+
+**Organized by Category:**
+
+#### `/docs/guides/`
+- `setup-guide.md` - Setting up the package in a new project
+- `migration-guide.md` - Migrating from older versions
+- `permission-system.md` - Understanding permissions
+- `edge-functions.md` - Working with Edge Functions
+- `validation-schemas.md` - Using Zod schemas
+
+#### `/docs/api/`
+- `types-reference.md` - All TypeScript types
+- `hooks-reference.md` - All React hooks
+- `contexts-reference.md` - Context providers
+- `utilities-reference.md` - Utility functions
+- `schemas-reference.md` - Validation schemas
+
+#### `/docs/architecture/`
+- `configuration-model.md` - Zero environment variables approach
+- `provider-architecture.md` - Context provider pattern
+- `permission-resolution.md` - How permissions are calculated
+- `database-schema.md` - Database structure
+
+#### `/docs/examples/`
+- `basic-setup.md` - Minimal working example
+- `advanced-configuration.md` - Advanced use cases
+- `custom-hooks.md` - Creating custom entity hooks
+- `plugin-integration.md` - Using in plugin development
+
+**Purpose:** Detailed, organized documentation by topic.
+
+---
+
+## 🔄 Update Protocol
+
+### When to Update Documentation
+
+#### After Adding Features
+1. Update `PROJECT_CONTEXT.md` with architecture changes
+2. Add API reference to `/docs/api/`
+3. Create guide in `/docs/guides/` if needed
+4. Update `DOCUMENTATION.md` index
+5. Update version in all documents
+
+#### After Bug Fixes
+1. Update relevant guides
+2. Add troubleshooting notes
+3. Document the fix
+
+#### After Breaking Changes
+1. Create migration guide
+2. Update all examples
+3. Update `PROJECT_CONTEXT.md`
+4. Bump major version
+5. Document in CHANGELOG
+
+#### Before Publishing
+1. Review all documentation
+2. Update version numbers
+3. Build and test
+4. Update examples
+5. Check all links
+
+---
+
+## 📝 Writing Guidelines
+
+### Document Headers (Always Include)
+
+```markdown
+# [Document Title]
+
+**Last Updated:** YYYY-MM-DD  
+**Package Version:** X.X.X  
+**Status:** 🟢 Current / 🟡 Needs Update / 🔴 Deprecated  
+
+---
+
+## Quick Overview
+[2-3 sentence summary]
+```
+
+### Use Status Indicators
+
+- 🟢 **Current** - Up to date
+- 🟡 **Needs Update** - Partially outdated
+- 🔴 **Deprecated** - No longer relevant
+- ✅ **Complete** - Feature is done
+- 🚧 **In Progress** - Work ongoing
+- 📋 **Planned** - Not started yet
+
+### Code Examples
+
+Always include:
+- Import statements
+- Type annotations
+- Comments explaining non-obvious parts
+- Expected behavior
+
+```typescript
+// ✅ Good example
+import { createSupabaseClient, type User } from '@core-erp/entity'
+
+// Create configured Supabase client
+const supabase = createSupabaseClient({
+  url: import.meta.env.VITE_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+})
+
+// Client is fully typed and ready to use
+const { data: users } = await supabase
+  .from('users')
+  .select('*')
+```
+
+---
+
+## 🎯 Context Continuity Rules
+
+### For AI Assistants
+
+When starting work on this package:
+
+1. **Read First (Priority Order):**
+   - `README.md` - Get package overview
+   - `PROJECT_CONTEXT.md` - Understand architecture
+   - `.cursor/rules/core-entity-project.mdc` - Follow rules
+   - `MIGRATION_SUMMARY.md` - Historical context
+
+2. **Key Principles to Remember:**
+   - NEVER read environment variables in this package
+   - Everything must be configurable
+   - This is a shared package used by multiple apps
+   - Changes affect all consuming applications
+
+3. **Before Making Changes:**
+   - Understand impact on consuming apps
+   - Check if it's a breaking change
+   - Consider backward compatibility
+   - Update documentation
+
+4. **After Making Changes:**
+   - Update relevant documentation
+   - Test in a consuming app
+   - Update version if needed
+   - Document any breaking changes
+
+### For Developers
+
+When using this package:
+
+1. **Quick Start:**
+   - Read `README.md` for installation
+   - Check `PROJECT_CONTEXT.md` for architecture
+   - Review examples in `/docs/examples/`
+
+2. **During Development:**
+   - Reference `/docs/api/` for API details
+   - Check `/docs/guides/` for patterns
+   - Follow configuration model
+
+3. **When Contributing:**
+   - Read `.cursor/rules/` first
+   - Follow architecture principles
+   - Update documentation
+   - Test changes
+
+---
+
+## 📊 Documentation Templates
+
+### API Reference Template
+
+```markdown
+# [API Name] Reference
+
+**Last Updated:** YYYY-MM-DD  
+**Package Version:** X.X.X
+
+---
+
+## Overview
+Brief description of what this API provides.
+
+## Import
+
+\`\`\`typescript
+import { APIName } from '@core-erp/entity'
+\`\`\`
+
+## Type Definition
+
+\`\`\`typescript
+interface/type definition
+\`\`\`
+
+## Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| param1 | Type | Yes | Description |
+
+## Returns
+
+Description of return value.
+
+## Examples
+
+### Basic Usage
+
+\`\`\`typescript
+// Example code
+\`\`\`
+
+### Advanced Usage
+
+\`\`\`typescript
+// Advanced example
+\`\`\`
+
+## Notes
+
+- Important note 1
+- Important note 2
+
+## Related
+
+- Link to related API
+- Link to guide
+```
+
+### Guide Template
+
+```markdown
+# [Guide Title]
+
+**Last Updated:** YYYY-MM-DD  
+**Difficulty:** Beginner / Intermediate / Advanced  
+**Time to Complete:** X minutes
+
+---
+
+## What You'll Learn
+
+- Point 1
+- Point 2
+
+## Prerequisites
+
+- Prerequisite 1
+- Prerequisite 2
+
+## Step-by-Step Guide
+
+### Step 1: [Title]
+
+Description and code example.
+
+### Step 2: [Title]
+
+Description and code example.
+
+## Complete Example
+
+Full working code.
+
+## Troubleshooting
+
+### Issue 1
+
+**Problem:** Description  
+**Solution:** How to fix
+
+## Next Steps
+
+- What to learn next
+- Related guides
+```
+
+---
+
+## 🔧 Maintenance Schedule
+
+### Before Each Release
+- [ ] Review all documentation for accuracy
+- [ ] Update version numbers
+- [ ] Test all code examples
+- [ ] Check all internal links
+- [ ] Update CHANGELOG
+
+### Monthly
+- [ ] Review API documentation
+- [ ] Update guides if needed
+- [ ] Check for outdated content
+- [ ] Update architecture docs
+
+### After Major Features
+- [ ] Create guide for new feature
+- [ ] Update API reference
+- [ ] Add examples
+- [ ] Update PROJECT_CONTEXT.md
+
+---
+
+## 📍 Quick Reference
+
+### Where to Find Information
+
+| Need to Know | Look Here |
+|--------------|-----------|
+| Package overview | `README.md` |
+| Full architecture | `PROJECT_CONTEXT.md` |
+| Installation | `README.md` |
+| API reference | `docs/api/` |
+| How-to guides | `docs/guides/` |
+| Examples | `docs/examples/` |
+| Architecture | `docs/architecture/` |
+
+### Quick Commands
+
+```bash
+# Type check
+npm run type-check
+
+# Build package
+npm run build
+
+# Watch mode for development
+npm run dev
+
+# Test in consuming app
+cd ../core-erp && npm install file:../core-entity
+```
+
+---
+
+## ✅ Documentation Checklist
+
+### When Adding New Feature
+
+- [ ] Update type exports in `src/index.ts`
+- [ ] Document types in `docs/api/types-reference.md`
+- [ ] Create usage guide in `docs/guides/`
+- [ ] Add code examples
+- [ ] Update `PROJECT_CONTEXT.md`
+- [ ] Update `DOCUMENTATION.md` index
+- [ ] Test examples in consuming app
+
+### When Fixing Bugs
+
+- [ ] Update relevant guides
+- [ ] Add troubleshooting section if needed
+- [ ] Update version number
+- [ ] Document in CHANGELOG
+
+### When Making Breaking Changes
+
+- [ ] Document in migration guide
+- [ ] Update all examples
+- [ ] Mark old API as deprecated
+- [ ] Provide upgrade path
+- [ ] Bump major version
+
+---
+
+## 🎓 Best Practices
+
+### Do's ✅
+
+- ✅ Keep documentation in sync with code
+- ✅ Use consistent terminology
+- ✅ Provide working code examples
+- ✅ Link related documentation
+- ✅ Use clear, simple language
+- ✅ Include TypeScript types
+- ✅ Test all code examples
+
+### Don'ts ❌
+
+- ❌ Leave documentation outdated
+- ❌ Use ambiguous language
+- ❌ Provide untested examples
+- ❌ Forget to update version numbers
+- ❌ Skip breaking change documentation
+- ❌ Use package-specific paths in examples
+- ❌ Assume reader's knowledge level
+
+---
+
+## 📚 Document Hierarchy
+
+```
+Priority 1 (Critical - Always Current):
+  └─ README.md
+  └─ PROJECT_CONTEXT.md
+  └─ .cursor/rules/core-entity-project.mdc
+
+Priority 2 (Important - Review with each release):
+  └─ DOCUMENTATION.md
+  └─ API Reference docs
+  └─ Migration guides
+
+Priority 3 (Update as needed):
+  └─ How-to guides
+  └─ Examples
+  └─ Architecture docs
+
+Priority 4 (Update before release):
+  └─ CHANGELOG
+  └─ Version numbers across all docs
+```
+
+---
+
+## 🔄 Version Control
+
+### Commit Messages for Docs
+
+```bash
+# Good commit messages
+docs: update API reference for new hooks
+docs(guide): add permission system tutorial
+docs: fix broken links in README
+docs(api): document new validation schemas
+
+# Bad commit messages
+updated docs
+fixes
+documentation
+```
+
+### Documentation Branches
+
+- Keep documentation in same branch as code
+- Review documentation changes in PRs
+- Tag documentation versions with releases
+
+---
+
+## 📦 Package-Specific Guidelines
+
+### Configuration Examples
+
+Always show that configuration comes from consuming app:
+
+```typescript
+// ✅ GOOD - Shows configuration source
+// In consuming app (e.g., core-erp)
+import { createSupabaseClient } from '@core-erp/entity'
+
+const supabase = createSupabaseClient({
+  url: import.meta.env.VITE_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+})
+
+// ❌ BAD - Implies package reads env vars
+import { createSupabaseClient } from '@core-erp/entity'
+const supabase = createSupabaseClient() // Missing config!
+```
+
+### Import Examples
+
+Show where things come from:
+
+```typescript
+// ✅ GOOD - Clear imports
+import { useAuth, useUsers, type User } from '@core-erp/entity'
+
+// ❌ BAD - Ambiguous
+import { useAuth } from '@core-erp/entity'
+const user = getUser() // Where is getUser from?
+```
+
+---
+
+**Last Updated:** 2025-01-10  
+**Maintained By:** Core ERP Team  
+**Review Frequency:** Monthly
